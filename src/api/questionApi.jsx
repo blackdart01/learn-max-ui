@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_BASE_URL = "http://localhost:5000/api/teachers";
+const API_BASE_URL = "https://learn-max.onrender.com/api/teachers";
+// const API_BASE_URL = "http://localhost:5000/api/teachers";
 // const API_BASE_URL = '/api/teachers'; // Adjust if your API base URL is different
 
 const getAuthHeader = () => ({

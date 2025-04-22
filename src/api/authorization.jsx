@@ -1,7 +1,8 @@
 import axios from 'axios';
 
 // const API_BASE_URL = `${import.meta.env.MAIN_URL || ''}/api/auth`;
-const API_BASE_URL = "http://localhost:5000/api/auth";
+// const API_BASE_URL = "http://localhost:5000/api/auth";
+const API_BASE_URL = "https://learn-max.onrender.com/api/auth";
 
 const getAuthHeader = () => ({
     Authorization: `Bearer ${localStorage.getItem('authToken')}`,
