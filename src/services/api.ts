@@ -25,10 +25,10 @@ api.interceptors.request.use((config) => {
 // Auth services
 export const authService = {
   register: (userData: { email: string; password: string; name: string; role: string }) =>
-    api.post<User>('/register', userData),
+    api.post<User>('/auth/register', userData),
   login: (credentials: { email: string; password: string }) =>
     api.post<{ user: User; token: string }>('auth/login', credentials),
-  logout: () => api.post('/logout'),
+  logout: () => api.post('/auth/logout'),
 };
 
 // Question services
@@ -50,7 +50,7 @@ export const testService = {
   getAllTestsNew: () => api.get<Test[]>('/test/tests/new'),
   getTestGist: () => api.get<Test[]>('/test/tests/testGist'),
   createTest: (test: Omit<Test, 'id' | 'createdAt' | 'createdBy'>) =>
-    api.post<Test>('/tests', test),
+    api.post<Test>('/test/tests', test),
   getTestById: (id: string) => api.get<Test>(`/test/tests/${id}`),
   getTestComplete: (id: string) => api.get<Test>(`/test/tests/${id}/complete`),
   updateTest: (id: string, test: Partial<Test>) => api.put<Test>(`/test/tests/${id}`, test),
