@@ -1,10 +1,11 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { questionService, testService } from '../services/api';
 import { Question, QuestionFormData } from '../types';
 import Modal from '../components/Modal';
 import Toast from '../components/Toast';
+import axios from 'axios';
 
 const defaultEditForm = {
   questionText: '',
@@ -41,6 +42,11 @@ const Questions: React.FC = () => {
   const [allTests, setAllTests] = useState<any[]>([]);
   const [selectedTestIds, setSelectedTestIds] = useState<string[]>([]);
   const [addToTestLoading, setAddToTestLoading] = useState(false);
+  const [uploadMenuOpen, setUploadMenuOpen] = useState(false);
+  const uploadMenuRef = useRef<HTMLDivElement>(null);
+  const [excelModalOpen, setExcelModalOpen] = useState(false);
+  const [excelFile, setExcelFile] = useState<File | null>(null);
+  const [excelUploading, setExcelUploading] = useState(false);
 
   // Delete handler
   const handleDelete = async () => {
@@ -64,6 +70,8 @@ const Questions: React.FC = () => {
     let correctAnswerArr: string[] = [];
     if (typeof question.correctAnswer === 'string' && question.correctAnswer) {
       correctAnswerArr = question.correctAnswer.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(question.correctAnswer)) {
+      correctAnswerArr = question.correctAnswer.map(s => s.trim());
     }
     setQuestionToEdit(question);
     setEditForm({
@@ -203,6 +211,18 @@ const Questions: React.FC = () => {
     }
   };
 
+  const handleToggleActive = async (question: Question) => {
+    try {
+      await questionService.toggleActiveStatus(question._id, !question.isActive);
+      setQuestions(prev => prev.map(q => q._id === question._id ? { ...q, isActive: !q.isActive } : q));
+      setToastType('success');
+      setToastMessage(`Question marked as ${!question.isActive ? 'Active' : 'Inactive'}`);
+    } catch (err) {
+      setToastType('error');
+      setToastMessage('Failed to update question status.');
+    }
+  };
+
   useEffect(() => {
     const fetchQuestions = async () => {
       try {
@@ -226,6 +246,21 @@ const Questions: React.FC = () => {
       return () => clearTimeout(timer);
     }
   }, [toastMessage]);
+
+  // Close menu on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (uploadMenuRef.current && !uploadMenuRef.current.contains(event.target as Node)) {
+        setUploadMenuOpen(false);
+      }
+    }
+    if (uploadMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [uploadMenuOpen]);
 
   if (loading) {
     return (
@@ -252,12 +287,39 @@ const Questions: React.FC = () => {
       <div className="px-4 py-6 sm:px-0">
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center mb-6 gap-4">
           <h1 className="text-2xl font-semibold text-gray-900 ">Question Bank</h1>
-          <button
-            className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 "
-            onClick={handleCreateNew}
-          >
-            Create New Question
-          </button>
+          <div className="flex gap-2">
+            <button
+              className="w-full sm:w-auto bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700 "
+              onClick={handleCreateNew}
+            >
+              Create New Question
+            </button>
+            <div className="relative" ref={uploadMenuRef}>
+              <button
+                className="w-full sm:w-auto bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700"
+                onClick={() => setUploadMenuOpen((open) => !open)}
+                type="button"
+              >
+                Upload Questions
+              </button>
+              {uploadMenuOpen && (
+                <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded shadow-lg z-10 flex flex-col">
+                  <button
+                    className="px-4 py-2 text-left hover:bg-gray-100"
+                    onClick={() => { setUploadMenuOpen(false); setExcelModalOpen(true); }}
+                  >
+                    Upload via Excel
+                  </button>
+                  <button
+                    className="px-4 py-2 text-left hover:bg-gray-100"
+                    onClick={() => { setUploadMenuOpen(false); /* TODO: handle Scan upload */ }}
+                  >
+                    Upload by Scan
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
         
         {questions.length === 0 ? (
@@ -266,83 +328,103 @@ const Questions: React.FC = () => {
           </div>
         ) : (
           <div className="space-y-4">
-            {questions.map((question) => (
-              <div key={question._id} className="bg-white  shadow rounded-lg p-4 flex flex-col gap-2">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                  <div className="flex-1">
-                    <h3 className="text-base sm:text-lg font-medium text-gray-900  mb-1">{question.questionText}</h3>
-                    <div className="mt-1">
-                      <div className="space-y-1">
-                        {question.options.map((option, index) => (
-                          <div
-                            key={index}
-                            className={`flex items-center space-x-2 text-sm ${
-                              Array.isArray(question.correctAnswer) && question.correctAnswer.includes(option)
-                                ? 'text-green-600 font-medium'
-                                : 'text-gray-500'
-                            }`}
-                          >
-                            <span className="w-6">{String.fromCharCode(65 + index)}.</span>
-                            <span>{option}</span>
-                            {Array.isArray(question.correctAnswer) && question.correctAnswer.includes(option) && (
-                              <span className="text-xs">(Correct)</span>
-                            )}
-                          </div>
-                        ))}
+            {questions.map((question) => {
+              // Always treat correctAnswer as an array for display
+              const correctAnswers = Array.isArray(question.correctAnswer)
+                ? question.correctAnswer
+                : typeof question.correctAnswer === 'string'
+                  ? question.correctAnswer.split(',').map(s => s.trim()).filter(Boolean)
+                  : [];
+              return (
+                <div key={question._id} className="bg-white  shadow rounded-lg p-4 flex flex-col gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex-1">
+                      <h3 className="text-base sm:text-lg font-medium text-gray-900  mb-1">{question.questionText}</h3>
+                      <div className="mt-1">
+                        <div className="space-y-1">
+                          {question.options.map((option, index) => (
+                            <div
+                              key={index}
+                              className={`flex items-center space-x-2 text-sm ${
+                                correctAnswers.includes(option)
+                                  ? 'text-green-600 font-medium'
+                                  : 'text-gray-500'
+                              }`}
+                            >
+                              <span className="w-6">{String.fromCharCode(65 + index)}.</span>
+                              <span>{option}</span>
+                              {correctAnswers.includes(option) && (
+                                <span className="text-xs">(Correct)</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
+                      {(question as any).questionType?.toLowerCase() === 'fill-in-the-blank' && (
+                        <div className="mt-2 text-green-700 text-sm">
+                          Correct Answer: {
+                            Array.isArray(question.correctAnswer)
+                              ? question.correctAnswer.join(', ')
+                              : (typeof question.correctAnswer === 'string' && question.correctAnswer
+                                  ? question.correctAnswer.split(',').map(ans => ans.trim()).filter(Boolean).join(', ')
+                                  : '')
+                          }
+                        </div>
+                      )}
                     </div>
-                    {(question as any).questionType?.toLowerCase() === 'fill-in-the-blank' && (
-                      <div className="mt-2 text-green-700 text-sm">
-                        Correct Answer: {
-                          Array.isArray(question.correctAnswer)
-                            ? question.correctAnswer.join(', ')
-                            : (typeof question.correctAnswer === 'string' && question.correctAnswer
-                                ? question.correctAnswer.split(',').map(ans => ans.trim()).filter(Boolean).join(', ')
-                                : '')
-                        }
-                      </div>
-                    )}
+                    <div className="flex sm:flex-wrap flex-row gap-2 sm:gap-2 mt-2 sm:mt-0">
+                      <button
+                        className="bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-200 w-full sm:w-auto"
+                        onClick={() => openEditModal(question)}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="bg-red-100 text-red-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-red-200 w-full sm:w-auto"
+                        onClick={() => {
+                          setQuestionToDelete(question);
+                          setDeleteModalOpen(true);
+                        }}
+                      >
+                        Delete
+                      </button>
+                      <button
+                        className="bg-green-100 text-green-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-green-200 w-full sm:w-auto"
+                        onClick={() => openAddToTestModal(question)}
+                      >
+                        Add to Test
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex sm:flex-wrap flex-row gap-2 sm:gap-2 mt-2 sm:mt-0">
-                    <button
-                      className="bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-200 w-full sm:w-auto"
-                      onClick={() => openEditModal(question)}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      className="bg-red-100 text-red-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-red-200 w-full sm:w-auto"
-                      onClick={() => {
-                        setQuestionToDelete(question);
-                        setDeleteModalOpen(true);
-                      }}
-                    >
-                      Delete
-                    </button>
-                    <button
-                      className="bg-green-100 text-green-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-green-200 w-full sm:w-auto"
-                      onClick={() => openAddToTestModal(question)}
-                    >
-                      Add to Test
-                    </button>
+                  <div className="mt-2 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
+                    <div className="flex flex-wrap gap-2">
+                      {question.topic && (
+                        <span className="inline-flex items-center text-xs sm:text-sm text-gray-500 bg-gray-100 rounded px-2 py-1">
+                          Topic: {question.topic}
+                        </span>
+                      )}
+                      {question.difficulty && (
+                        <span className="inline-flex items-center text-xs sm:text-sm text-gray-500  bg-gray-100 rounded px-2 py-1">
+                          Difficulty: {question.difficulty}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-semibold ${question.isActive ? 'text-green-600' : 'text-gray-400'}`}>{question.isActive ? 'Active' : 'Inactive'}</span>
+                      <button
+                        onClick={() => handleToggleActive(question)}
+                        className={`w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300 ${question.isActive ? 'bg-green-400' : 'bg-gray-300'}`}
+                        title={question.isActive ? 'Deactivate' : 'Activate'}
+                      >
+                        <span
+                          className={`h-4 w-4 bg-white rounded-full shadow-md transform transition-transform duration-300 ${question.isActive ? 'translate-x-4' : ''}`}
+                        />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="mt-2 flex flex-col sm:flex-row sm:justify-between gap-1 sm:gap-4">
-                  <div className="flex flex-wrap gap-2">
-                    {question.topic && (
-                      <span className="inline-flex items-center text-xs sm:text-sm text-gray-500 bg-gray-100 rounded px-2 py-1">
-                        Topic: {question.topic}
-                      </span>
-                    )}
-                    {question.difficulty && (
-                      <span className="inline-flex items-center text-xs sm:text-sm text-gray-500  bg-gray-100 rounded px-2 py-1">
-                        Difficulty: {question.difficulty}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -446,6 +528,23 @@ const Questions: React.FC = () => {
                     required={editForm.questionType !== 'checkbox'}
                   />
                   <span className="ml-1 text-xs">Correct</span>
+                  <button
+                    type="button"
+                    className="ml-2 text-red-500 hover:text-red-700"
+                    onClick={() => {
+                      setEditForm(prev => {
+                        const newOptions = prev.options.filter((_, i) => i !== idx);
+                        const newCorrect = prev.correctAnswer.filter(ans => ans !== option);
+                        return { ...prev, options: newOptions, correctAnswer: newCorrect };
+                      });
+                    }}
+                    title="Delete option"
+                  >
+                    {/* Trash icon SVG */}
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               ))}
               <button
@@ -547,6 +646,70 @@ const Questions: React.FC = () => {
             </div>
           </form>
         )}
+      </Modal>
+      {/* Excel Upload Modal */}
+      <Modal isOpen={excelModalOpen} onClose={() => setExcelModalOpen(false)} title="Upload Questions via Excel">
+        <form
+          onSubmit={async (e) => {
+            e.preventDefault();
+            if (!excelFile) return;
+            setExcelUploading(true);
+            try {
+              const formData = new FormData();
+              formData.append('questions', excelFile);
+              await questionService.uploadQuestionsExcel(formData);
+              // Re-fetch questions after successful upload
+              const response = await questionService.getAllQuestions();
+              setQuestions(response.data);
+              setExcelModalOpen(false);
+              setExcelFile(null);
+              setToastType('success');
+              setToastMessage('Questions uploaded successfully!');
+            } catch (err) {
+              setToastType('error');
+              setToastMessage('Failed to upload questions.');
+            } finally {
+              setExcelUploading(false);
+            }
+          }}
+        >
+          <div className="mb-4">
+            <div className="mb-2 text-sm text-gray-700">
+              Please download the template Excel sheet and add your questions to it before uploading.
+            </div>
+            <a
+              href="/assets/upload_question_template.xlsx"
+              download
+              className="inline-block mb-2 px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 text-sm font-medium"
+            >
+              Download Template
+            </a>
+            <label className="block mb-1 font-medium">Select Excel/CSV File</label>
+            <input
+              type="file"
+              accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel"
+              onChange={e => setExcelFile(e.target.files?.[0] || null)}
+              className="w-full border rounded px-3 py-2"
+              required
+            />
+          </div>
+          <div className="flex justify-end space-x-2">
+            <button
+              type="button"
+              className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+              onClick={() => setExcelModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+              disabled={excelUploading || !excelFile}
+            >
+              {excelUploading ? 'Uploading...' : 'Upload'}
+            </button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

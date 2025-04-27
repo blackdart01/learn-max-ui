@@ -11,11 +11,13 @@ export interface Question {
   teacherId: string;
   questionText: string;
   options: string[];
-  correctAnswer: string;
+  correctAnswer: string[] | string;
   topic?: string;
-  difficulty?: 'easy' | 'medium' | 'hard';
-  createdAt: string;
-  updatedAt: string;
+  difficulty?: string;
+  questionType?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  isActive?: boolean;
 }
 
 export interface QuestionModel extends Omit<Question, 'teacherId'> {

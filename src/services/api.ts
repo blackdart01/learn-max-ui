@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Question, Test, Attempt, User } from '../types';
+import { Question, Test, Attempt, User, TestFormData } from '../types';
 
 // Make sure to use the full URL from the environment variable
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
@@ -42,6 +42,12 @@ export const questionService = {
   deleteQuestion: (id: string) => api.delete(`/teachers/questions/${id}`),
   getAllQuestionsImported: () => api.get<Question[]>('/teachers/questionsImported'),
   getStatusQuestionsImported: () => api.get<{ status: string }>('/teachers/questionsImportedNew'),
+  uploadQuestionsExcel: (formData: FormData) =>
+    api.post('/teachers/questions/upload-csv', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  toggleActiveStatus: (id: string, value: boolean) =>
+    api.put(`/teachers/questions/${id}/${value}`),
 };
 
 // Test services
@@ -49,7 +55,7 @@ export const testService = {
   getAllTests: () => api.get<Test[]>('/test/tests'),
   getAllTestsNew: () => api.get<Test[]>('/test/tests/new'),
   getTestGist: () => api.get<Test[]>('/test/tests/testGist'),
-  createTest: (test: Omit<Test, 'id' | 'createdAt' | 'createdBy'>) =>
+  createTest: (test: TestFormData) =>
     api.post<Test>('/test/tests', test),
   getTestById: (id: string) => api.get<Test>(`/test/tests/${id}`),
   getTestComplete: (id: string) => api.get<Test>(`/test/tests/${id}/complete`),

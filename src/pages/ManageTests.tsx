@@ -2,9 +2,18 @@ import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { testService } from '../services/api';
-import { Test } from '../types';
+import { Test, TestFormData } from '../types';
 import Modal from '../components/Modal';
 import { useNavigate } from 'react-router-dom';
+
+// Helper to convert ISO string to datetime-local format
+function toDateTimeLocal(isoString: string) {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const offset = date.getTimezoneOffset();
+  const localDate = new Date(date.getTime() - offset * 60 * 1000);
+  return localDate.toISOString().slice(0, 16);
+}
 
 const ManageTests: React.FC = () => {
   const [tests, setTests] = useState<Test[]>([]);
@@ -13,6 +22,27 @@ const ManageTests: React.FC = () => {
   const [testDetailModalOpen, setTestDetailModalOpen] = useState(false);
   const [testDetail, setTestDetail] = useState<Test | null>(null);
   const [testDetailLoading, setTestDetailLoading] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [form, setForm] = useState({
+    title: '',
+    description: '',
+    duration: 60,
+    startDate: '',
+    endDate: '',
+  });
+  const [creating, setCreating] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    _id: '',
+    title: '',
+    description: '',
+    duration: 60,
+    startDate: '',
+    endDate: '',
+  });
+  const [editing, setEditing] = useState(false);
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [testToDelete, setTestToDelete] = useState<Test | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -54,6 +84,25 @@ const ManageTests: React.FC = () => {
     }
   };
 
+  // Edit handlers
+  const openEditModal = (test: Test) => {
+    setEditForm({
+      _id: test._id,
+      title: test.title,
+      description: test.description || '',
+      duration: test.duration,
+      startDate: test.startDate || '',
+      endDate: test.endDate || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  // Delete handlers
+  const openDeleteModal = (test: Test) => {
+    setTestToDelete(test);
+    setDeleteModalOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -77,7 +126,7 @@ const ManageTests: React.FC = () => {
           <h1 className="text-2xl font-semibold text-gray-900">Manage Tests</h1>
           <button
             className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-            onClick={() => {/* TODO: Implement create test */}}
+            onClick={() => setCreateModalOpen(true)}
           >
             Create New Test
           </button>
@@ -110,18 +159,18 @@ const ManageTests: React.FC = () => {
                       })()}
                       <button
                         className="ml-2 bg-blue-100 text-blue-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-blue-200"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          /* TODO: Implement edit */
+                          openEditModal(test);
                         }}
                       >
                         Edit
                       </button>
                       <button
                         className="bg-red-100 text-red-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-red-200"
-                        onClick={(e) => {
+                        onClick={e => {
                           e.stopPropagation();
-                          /* TODO: Implement delete */
+                          openDeleteModal(test);
                         }}
                       >
                         Delete
@@ -176,6 +225,216 @@ const ManageTests: React.FC = () => {
           ) : (
             <div>Failed to load test details.</div>
           )}
+        </Modal>
+
+        <Modal isOpen={createModalOpen} onClose={() => setCreateModalOpen(false)} title="Create New Test">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setCreating(true);
+              try {
+                const payload: TestFormData = {
+                  title: form.title,
+                  description: form.description,
+                  duration: Number(form.duration),
+                  startDate: form.startDate || undefined,
+                  endDate: form.endDate || undefined,
+                  questions: [],
+                };
+                const response = await testService.createTest(payload);
+                setTests((prev) => [response.data, ...prev]);
+                setCreateModalOpen(false);
+                setForm({ title: '', description: '', duration: 60, startDate: '', endDate: '' });
+              } catch (err) {
+                alert('Failed to create test');
+              } finally {
+                setCreating(false);
+              }
+            }}
+          >
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Title</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Description</label>
+              <textarea
+                className="w-full border rounded px-3 py-2"
+                value={form.description}
+                onChange={e => setForm(f => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Duration (minutes)</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2"
+                value={form.duration}
+                onChange={e => setForm(f => ({ ...f, duration: Number(e.target.value) }))}
+                min={1}
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Start Date</label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                value={form.startDate}
+                onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">End Date</label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                value={form.endDate}
+                onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                onClick={() => setCreateModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                disabled={creating}
+              >
+                {creating ? 'Creating...' : 'Create'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Edit Test Modal */}
+        <Modal isOpen={editModalOpen} onClose={() => setEditModalOpen(false)} title="Edit Test">
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              setEditing(true);
+              try {
+                const payload = {
+                  title: editForm.title,
+                  description: editForm.description,
+                  duration: Number(editForm.duration),
+                  startDate: editForm.startDate || undefined,
+                  endDate: editForm.endDate || undefined,
+                };
+                const response = await testService.updateTest(editForm._id, payload);
+                setTests(prev => prev.map(t => t._id === editForm._id ? response.data : t));
+                setEditModalOpen(false);
+              } catch (err) {
+                alert('Failed to update test');
+              } finally {
+                setEditing(false);
+              }
+            }}
+          >
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Title</label>
+              <input
+                type="text"
+                className="w-full border rounded px-3 py-2"
+                value={editForm.title}
+                onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Description</label>
+              <textarea
+                className="w-full border rounded px-3 py-2"
+                value={editForm.description}
+                onChange={e => setEditForm(f => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Duration (minutes)</label>
+              <input
+                type="number"
+                className="w-full border rounded px-3 py-2"
+                value={editForm.duration}
+                onChange={e => setEditForm(f => ({ ...f, duration: Number(e.target.value) }))}
+                min={1}
+                required
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Start Date</label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                value={toDateTimeLocal(editForm.startDate)}
+                onChange={e => setEditForm(f => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">End Date</label>
+              <input
+                type="datetime-local"
+                className="w-full border rounded px-3 py-2"
+                value={toDateTimeLocal(editForm.endDate)}
+                onChange={e => setEditForm(f => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                type="button"
+                className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+                onClick={() => setEditModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700"
+                disabled={editing}
+              >
+                {editing ? 'Saving...' : 'Save'}
+              </button>
+            </div>
+          </form>
+        </Modal>
+
+        {/* Delete Confirmation Modal */}
+        <Modal isOpen={deleteModalOpen} onClose={() => setDeleteModalOpen(false)} title="Delete Test">
+          <div>Are you sure you want to delete this test?</div>
+          <div className="mt-6 flex justify-end space-x-2">
+            <button
+              className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+              onClick={() => setDeleteModalOpen(false)}
+            >
+              Cancel
+            </button>
+            <button
+              className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+              onClick={async () => {
+                if (!testToDelete) return;
+                try {
+                  await testService.deleteTest(testToDelete._id);
+                  setTests(prev => prev.filter(t => t._id !== testToDelete._id));
+                  setDeleteModalOpen(false);
+                  setTestToDelete(null);
+                } catch (err) {
+                  alert('Failed to delete test');
+                }
+              }}
+            >
+              Delete
+            </button>
+          </div>
         </Modal>
       </div>
     </div>

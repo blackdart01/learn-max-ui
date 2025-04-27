@@ -36,6 +36,8 @@ const TestQuestions: React.FC = () => {
   const [editForm, setEditForm] = useState<EditFormType>({ ...defaultEditForm });
   const [editLoading, setEditLoading] = useState(false);
   const [removeLoading, setRemoveLoading] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [questionToRemove, setQuestionToRemove] = useState<Question | null>(null);
 
   useEffect(() => {
     const fetchTest = async () => {
@@ -67,6 +69,8 @@ const TestQuestions: React.FC = () => {
     let correctAnswerArr: string[] = [];
     if (typeof question.correctAnswer === 'string' && question.correctAnswer) {
       correctAnswerArr = question.correctAnswer.split(',').map(s => s.trim()).filter(Boolean);
+    } else if (Array.isArray(question.correctAnswer)) {
+      correctAnswerArr = question.correctAnswer.map(s => s.trim());
     }
     setQuestionToEdit(question);
     setEditForm({
@@ -224,7 +228,10 @@ const TestQuestions: React.FC = () => {
                         </button>
                         <button
                           className="bg-yellow-100 text-yellow-800 px-3 py-1 rounded-md text-sm font-medium hover:bg-yellow-200"
-                          onClick={() => handleRemoveFromTest(question)}
+                          onClick={() => {
+                            setQuestionToRemove(question);
+                            setRemoveConfirmOpen(true);
+                          }}
                           disabled={removeLoading}
                         >
                           {removeLoading ? 'Removing...' : 'Remove from Test'}
@@ -414,6 +421,40 @@ const TestQuestions: React.FC = () => {
             </button>
           </div>
         </form>
+      </Modal>
+      {/* Confirmation Modal */}
+      <Modal isOpen={removeConfirmOpen} onClose={() => setRemoveConfirmOpen(false)} title="Remove Question from Test">
+        <div>Are you sure you want to remove this question from the test?</div>
+        <div className="mt-6 flex justify-end space-x-2">
+          <button
+            className="px-4 py-2 rounded bg-gray-200 text-gray-800 hover:bg-gray-300"
+            onClick={() => setRemoveConfirmOpen(false)}
+          >
+            Cancel
+          </button>
+          <button
+            className="px-4 py-2 rounded bg-red-600 text-white hover:bg-red-700"
+            onClick={async () => {
+              if (!testId || !questionToRemove) return;
+              setRemoveLoading(true);
+              try {
+                await testService.removeQuestionFromTest(testId, questionToRemove._id);
+                setQuestions((prev) => prev.filter((q) => q._id !== questionToRemove._id));
+                setRemoveConfirmOpen(false);
+                setQuestionToRemove(null);
+                setToastType('success');
+                setToastMessage('Question removed from test');
+              } catch (err) {
+                setToastType('error');
+                setToastMessage('Failed to remove question from test');
+              } finally {
+                setRemoveLoading(false);
+              }
+            }}
+          >
+            Remove
+          </button>
+        </div>
       </Modal>
     </div>
   );
