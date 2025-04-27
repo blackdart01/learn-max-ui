@@ -48,6 +48,14 @@ export const questionService = {
     }),
   toggleActiveStatus: (id: string, value: boolean) =>
     api.put(`/teachers/questions/${id}/${value}`),
+  uploadQuestionsScan: (formData: FormData) =>
+    api.post('/teachers/questions/upload-csv-v2', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
+  getOpenAiPdf: (formData: FormData) =>
+    api.post('/teachers/getOpenAi', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
 };
 
 // Test services
