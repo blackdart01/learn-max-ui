@@ -86,6 +86,7 @@ export const studentService = {
     api.post<Attempt>(`/students/tests/${testId}/submit`, { answers }),
   getStudentAttempts: () => api.get<Attempt[]>('/students/attempts'),
   getStudentAttemptById: (attemptId: string) => api.get<Attempt>(`/students/attempts/${attemptId}`),
+  joinTestByCode: (code: string) => api.post('/students/join-test-by-code', { code }),
 };
 
 // Teacher services

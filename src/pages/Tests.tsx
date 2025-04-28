@@ -3,17 +3,19 @@ import { useDispatch, useSelector } from 'react-redux';
 import { RootState } from '../store';
 import { testService, studentService } from '../services/api';
 import { Test } from '../types';
+import { useNavigate } from 'react-router-dom';
 
 const Tests: React.FC = () => {
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTests = async () => {
       try {
         setLoading(true);
-        const response = await testService.getAllTests();
+        const response = await studentService.getAllAvailableTests();
         setTests(response.data);
       } catch (err) {
         setError('Failed to fetch tests');
@@ -27,9 +29,9 @@ const Tests: React.FC = () => {
 
   const handleStartTest = async (testId: string) => {
     try {
-      const response = await studentService.startTest(testId);
-      // TODO: Navigate to test taking page with the attempt
-      console.log('Started test:', response.data);
+      const res = await studentService.startTest(testId);
+      const attemptId = res.data._id;
+      navigate(`/tests/${testId}/attempt/${attemptId}`);
     } catch (err) {
       setError('Failed to start test');
     }
@@ -83,7 +85,7 @@ const Tests: React.FC = () => {
                     <div className="mt-2 sm:flex sm:justify-between">
                       <div className="sm:flex">
                         <p className="flex items-center text-sm text-gray-500">
-                          Questions: {test.questions.length} • Duration: {test.duration} minutes
+                          Questions: {Array.isArray(test.questions) ? test.questions.length : 0} • Duration: {test.duration} minutes
                         </p>
                       </div>
                       <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">

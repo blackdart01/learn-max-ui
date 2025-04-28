@@ -5,6 +5,7 @@ import { testService } from '../services/api';
 import { Test, TestFormData } from '../types';
 import Modal from '../components/Modal';
 import { useNavigate } from 'react-router-dom';
+import Toast from '../components/Toast';
 
 // Helper to convert ISO string to datetime-local format
 function toDateTimeLocal(isoString: string) {
@@ -15,6 +16,19 @@ function toDateTimeLocal(isoString: string) {
   return localDate.toISOString().slice(0, 16);
 }
 
+// Add type for form and editForm
+interface TestFormUI {
+  title: string;
+  description: string;
+  duration: number;
+  startDate: string;
+  endDate: string;
+  visibility: 'enrolled' | 'public' | 'code';
+  joinCode: string;
+  allowedStudentIds: string[];
+  _id?: string;
+}
+
 const ManageTests: React.FC = () => {
   const [tests, setTests] = useState<Test[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,27 +37,35 @@ const ManageTests: React.FC = () => {
   const [testDetail, setTestDetail] = useState<Test | null>(null);
   const [testDetailLoading, setTestDetailLoading] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(false);
-  const [form, setForm] = useState({
+  const [form, setForm] = useState<TestFormUI>({
     title: '',
     description: '',
     duration: 60,
     startDate: '',
     endDate: '',
+    visibility: 'enrolled',
+    joinCode: '',
+    allowedStudentIds: [],
   });
   const [creating, setCreating] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
+  const [editForm, setEditForm] = useState<TestFormUI>({
     _id: '',
     title: '',
     description: '',
     duration: 60,
     startDate: '',
     endDate: '',
+    visibility: 'enrolled',
+    joinCode: '',
+    allowedStudentIds: [],
   });
   const [editing, setEditing] = useState(false);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [testToDelete, setTestToDelete] = useState<Test | null>(null);
   const navigate = useNavigate();
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [toastType, setToastType] = useState<'success' | 'error'>('success');
 
   useEffect(() => {
     const fetchTests = async () => {
@@ -93,6 +115,9 @@ const ManageTests: React.FC = () => {
       duration: test.duration,
       startDate: test.startDate || '',
       endDate: test.endDate || '',
+      visibility: test.visibility,
+      joinCode: test.joinCode || '',
+      allowedStudentIds: test.allowedStudentIds || [],
     });
     setEditModalOpen(true);
   };
@@ -121,6 +146,7 @@ const ManageTests: React.FC = () => {
 
   return (
     <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <Toast message={toastMessage || ""} isOpen={!!toastMessage} />
       <div className="px-4 py-6 sm:px-0">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-semibold text-gray-900">Manage Tests</h1>
@@ -240,11 +266,14 @@ const ManageTests: React.FC = () => {
                   startDate: form.startDate || undefined,
                   endDate: form.endDate || undefined,
                   questions: [],
+                  visibility: form.visibility,
+                  joinCode: form.visibility === 'code' ? form.joinCode : undefined,
+                  allowedStudentIds: form.allowedStudentIds,
                 };
                 const response = await testService.createTest(payload);
                 setTests((prev) => [response.data, ...prev]);
                 setCreateModalOpen(false);
-                setForm({ title: '', description: '', duration: 60, startDate: '', endDate: '' });
+                setForm({ title: '', description: '', duration: 60, startDate: '', endDate: '', visibility: 'enrolled', joinCode: '', allowedStudentIds: [] });
               } catch (err) {
                 alert('Failed to create test');
               } finally {
@@ -299,6 +328,31 @@ const ManageTests: React.FC = () => {
                 onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
               />
             </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Visibility</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={form.visibility}
+                onChange={e => setForm(f => ({ ...f, visibility: e.target.value as 'enrolled' | 'public' | 'code' }))}
+              >
+                <option value="enrolled">Only my enrolled students</option>
+                <option value="public">All students</option>
+                <option value="code">Students with join code</option>
+              </select>
+            </div>
+            {form.visibility === 'code' && (
+              <div className="mb-4">
+                <label className="block mb-1 font-medium">Join Code</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={form.joinCode}
+                  onChange={e => setForm(f => ({ ...f, joinCode: e.target.value }))}
+                  placeholder="Enter or generate a join code"
+                  required={form.visibility === 'code'}
+                />
+              </div>
+            )}
             <div className="flex justify-end space-x-2">
               <button
                 type="button"
@@ -325,18 +379,25 @@ const ManageTests: React.FC = () => {
               e.preventDefault();
               setEditing(true);
               try {
+                if (!editForm._id) return;
                 const payload = {
                   title: editForm.title,
                   description: editForm.description,
                   duration: Number(editForm.duration),
                   startDate: editForm.startDate || undefined,
                   endDate: editForm.endDate || undefined,
+                  visibility: editForm.visibility,
+                  joinCode: editForm.visibility === 'code' ? editForm.joinCode : undefined,
+                  allowedStudentIds: editForm.allowedStudentIds,
                 };
                 const response = await testService.updateTest(editForm._id, payload);
                 setTests(prev => prev.map(t => t._id === editForm._id ? response.data : t));
                 setEditModalOpen(false);
+                setToastType('success');
+                setToastMessage('Test updated successfully');
               } catch (err) {
-                alert('Failed to update test');
+                setToastType('error');
+                setToastMessage('Failed to update test');
               } finally {
                 setEditing(false);
               }
@@ -376,7 +437,7 @@ const ManageTests: React.FC = () => {
               <input
                 type="datetime-local"
                 className="w-full border rounded px-3 py-2"
-                value={toDateTimeLocal(editForm.startDate)}
+                value={toDateTimeLocal(editForm.startDate || '')}
                 onChange={e => setEditForm(f => ({ ...f, startDate: e.target.value }))}
               />
             </div>
@@ -385,10 +446,35 @@ const ManageTests: React.FC = () => {
               <input
                 type="datetime-local"
                 className="w-full border rounded px-3 py-2"
-                value={toDateTimeLocal(editForm.endDate)}
+                value={toDateTimeLocal(editForm.endDate || '')}
                 onChange={e => setEditForm(f => ({ ...f, endDate: e.target.value }))}
               />
             </div>
+            <div className="mb-4">
+              <label className="block mb-1 font-medium">Visibility</label>
+              <select
+                className="w-full border rounded px-3 py-2"
+                value={editForm.visibility}
+                onChange={e => setEditForm(f => ({ ...f, visibility: e.target.value as 'enrolled' | 'public' | 'code' }))}
+              >
+                <option value="enrolled">Only my enrolled students</option>
+                <option value="public">All students</option>
+                <option value="code">Students with join code</option>
+              </select>
+            </div>
+            {editForm.visibility === 'code' && (
+              <div className="mb-4">
+                <label className="block mb-1 font-medium">Join Code</label>
+                <input
+                  type="text"
+                  className="w-full border rounded px-3 py-2"
+                  value={editForm.joinCode}
+                  onChange={e => setEditForm(f => ({ ...f, joinCode: e.target.value }))}
+                  placeholder="Enter or generate a join code"
+                  required={editForm.visibility === 'code'}
+                />
+              </div>
+            )}
             <div className="flex justify-end space-x-2">
               <button
                 type="button"

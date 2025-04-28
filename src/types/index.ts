@@ -32,7 +32,7 @@ export interface QuestionModel extends Omit<Question, 'teacherId'> {
 
 export interface Test {
   _id: string;
-  teacherId: string;
+  teacherId: string | User;
   title: string;
   description?: string;
   questions: Question[];
@@ -41,6 +41,9 @@ export interface Test {
   endDate?: string;
   createdAt: string;
   updatedAt: string;
+  visibility: 'enrolled' | 'public' | 'code';
+  joinCode?: string;
+  allowedStudentIds?: string[];
 }
 
 export interface Answer {
@@ -110,4 +113,7 @@ export interface TestFormData {
   startDate?: string;
   endDate?: string;
   questions: string[];
+  visibility?: 'enrolled' | 'public' | 'code';
+  joinCode?: string;
+  allowedStudentIds?: string[];
 } 

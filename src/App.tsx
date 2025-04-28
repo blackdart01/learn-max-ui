@@ -17,6 +17,7 @@ import Tests from './pages/Tests';
 import MyAttempts from './pages/MyAttempts';
 import ManageTests from './pages/ManageTests';
 import TestQuestions from './pages/TestQuestions';
+import TestTaking from './pages/TestTaking';
 
 function getTokenExpiration(token: string | null): number | null {
   if (!token) return null;
@@ -128,6 +129,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['student']}>
                 <Tests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/tests/:testId/attempt/:attemptId"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <TestTaking />
               </ProtectedRoute>
             }
           />
