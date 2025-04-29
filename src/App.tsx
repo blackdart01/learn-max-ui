@@ -18,6 +18,8 @@ import MyAttempts from './pages/MyAttempts';
 import ManageTests from './pages/ManageTests';
 import TestQuestions from './pages/TestQuestions';
 import TestTaking from './pages/TestTaking';
+import ViewResponse from './pages/ViewResponse';
+import AttemptDetails from './pages/AttemptDetails';
 
 function getTokenExpiration(token: string | null): number | null {
   if (!token) return null;
@@ -133,7 +135,15 @@ const App: React.FC = () => {
             }
           />
           <Route
-            path="/tests/:testId/attempt/:attemptId"
+            path="/test/:testId/start"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <TestTaking />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/test-taking/:testId/:attemptId"
             element={
               <ProtectedRoute allowedRoles={['student']}>
                 <TestTaking />
@@ -145,6 +155,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['student']}>
                 <MyAttempts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/attempt-details/:attemptId"
+            element={
+              <ProtectedRoute allowedRoles={['student']}>
+                <AttemptDetails />
               </ProtectedRoute>
             }
           />
@@ -174,6 +192,9 @@ const App: React.FC = () => {
               </ProtectedRoute>
             }
           />
+
+          {/* View Response route */}
+          <Route path="/view-response/:attemptId" element={<ViewResponse />} />
 
           {/* Redirect to appropriate dashboard based on role */}
           <Route

@@ -87,6 +87,18 @@ export const studentService = {
   getStudentAttempts: () => api.get<Attempt[]>('/students/attempts'),
   getStudentAttemptById: (attemptId: string) => api.get<Attempt>(`/students/attempts/${attemptId}`),
   joinTestByCode: (code: string) => api.post('/students/join-test-by-code', { code }),
+  // Save test progress
+  saveTestProgress: async (attemptId: string, progress: {
+    answers: { [key: string]: string };
+    timeLeft: number;
+    current: number;
+  }) => {
+    return api.post(`/students/attempts/${attemptId}/progress`, progress);
+  },
+  // Get saved test progress
+  getTestProgress: async (attemptId: string) => {
+    return api.get(`/students/attempts/${attemptId}/progress`);
+  }
 };
 
 // Teacher services

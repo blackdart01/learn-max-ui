@@ -156,13 +156,21 @@ const TestTaking: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!attempt?.testId?._id) {
+      setToast({ message: 'Test ID not found. Please try again.', type: 'error' });
+      return;
+    }
+
     setSubmitting(true);
     try {
-      const formattedAnswers = Object.entries(answers).map(([questionId, selectedOption]) => ({
+      // Format answers as an object with questionId as key and answer as value
+      const formattedAnswers = Object.entries(answers).map(([questionId, answer]) => ({
         questionId,
-        selectedOption
+        selectedOption: answer
       }));
-      await studentService.submitTest(testId!, formattedAnswers);
+
+      await studentService.submitTest(attempt.testId._id, formattedAnswers);
+      
       // Clear saved state after successful submission
       localStorage.removeItem(`test_state_${attemptId}`);
       setToast({ message: 'Test submitted successfully!', type: 'success' });
@@ -268,34 +276,49 @@ const TestTaking: React.FC = () => {
         {/* Render options based on questionType */}
         {(!q.questionType || q.questionType === 'multiple-choice' || q.questionText === 'MCQ') && Array.isArray(q.options) && q.options.length > 0 && (
           <div className="space-y-3">
-            {q.options.map((opt, idx) => (
-              <label key={idx} className="flex items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer group">
-                <input
-                  type="radio"
-                  name={`q_${q._id}`}
-                  value={opt}
-                  checked={answers[q._id] === opt}
-                  onChange={() => handleOptionChange(q._id, opt)}
-                  className="h-4 w-4 text-blue-600 focus:ring-blue-500"
-                  disabled={submitting}
-                />
-                <span className="ml-3 flex-grow">{opt}</span>
-                {answers[q._id] === opt && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleClearSelection(q._id);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 ml-2 text-gray-400 hover:text-red-500 transition-opacity"
-                    disabled={submitting}
-                  >
-                    <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
-                )}
-              </label>
-            ))}
+            {q.options.map((opt, idx) => {
+              const isSelected = answers[q._id] === opt;
+              const isCorrect = Array.isArray(q.correctAnswer) 
+                ? q.correctAnswer.includes(opt)
+                : q.correctAnswer === opt;
+              const showAnswer = attempt.endTime; // Only show correct/incorrect after test is submitted
+
+              let optionClass = "flex items-center p-3 rounded-lg hover:bg-gray-50 cursor-pointer group ";
+              if (showAnswer) {
+                if (isSelected && isCorrect) {
+                  optionClass += "bg-green-50 border border-green-200";
+                } else if (isSelected && !isCorrect) {
+                  optionClass += "bg-red-50 border border-red-200";
+                } else if (isCorrect) {
+                  optionClass += "bg-green-50 border border-green-200";
+                }
+              }
+
+              return (
+                <label key={idx} className={optionClass}>
+                  <input
+                    type="radio"
+                    name={`q_${q._id}`}
+                    value={opt}
+                    checked={isSelected}
+                    onChange={() => handleOptionChange(q._id, opt)}
+                    className="h-4 w-4 text-blue-600 focus:ring-blue-500"
+                    disabled={submitting || showAnswer}
+                  />
+                  <span className="ml-3 flex-grow">{opt}</span>
+                  {showAnswer && isSelected && (
+                    <span className={`ml-2 text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                      {isCorrect ? 'Correct' : 'Your Answer'}
+                    </span>
+                  )}
+                  {showAnswer && !isSelected && isCorrect && (
+                    <span className="ml-2 text-sm text-green-600">
+                      Correct Answer
+                    </span>
+                  )}
+                </label>
+              );
+            })}
           </div>
         )}
         {/* For fill-in-the-blank or questions without options */}

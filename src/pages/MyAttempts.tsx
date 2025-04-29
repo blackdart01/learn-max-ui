@@ -4,6 +4,7 @@ import { RootState } from '../store';
 import { studentService } from '../services/api';
 import { Attempt } from '../types';
 import ContinueTestModal from '../components/ContinueTestModal';
+import { useNavigate } from 'react-router-dom';
 
 const MyAttempts: React.FC = () => {
   const [attempts, setAttempts] = useState<Attempt[]>([]);
@@ -22,6 +23,7 @@ const MyAttempts: React.FC = () => {
     testTitle: '',
     startTime: '',
   });
+  const navigate = useNavigate();
 
   // Group attempts by test
   const groupedAttempts = attempts.reduce((acc, attempt) => {
@@ -249,6 +251,25 @@ const MyAttempts: React.FC = () => {
                                   Completed: {new Date(attempt.endTime).toLocaleString()}
                                 </div>
                               )}
+                            </div>
+                          </div>
+
+                          <div className="mt-4">
+                            <div className="flex gap-2">
+                              {!attempt.endTime && (
+                                <button
+                                  onClick={() => navigate(`/test-taking/${attempt.testId._id}/${attempt._id}`)}
+                                  className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                                >
+                                  Continue Test
+                                </button>
+                              )}
+                              <button
+                                onClick={() => navigate(`/attempt-details/${attempt._id}`)}
+                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200 text-sm"
+                              >
+                                View Details
+                              </button>
                             </div>
                           </div>
                         </div>

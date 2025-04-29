@@ -54,7 +54,7 @@ export interface Answer {
 export interface Attempt {
   _id: string;
   studentId: string;
-  testId: string;
+  testId: Test;
   answers: Answer[];
   score?: number;
   startTime: string;

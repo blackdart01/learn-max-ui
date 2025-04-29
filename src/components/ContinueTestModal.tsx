@@ -23,7 +23,7 @@ const ContinueTestModal: React.FC<ContinueTestModalProps> = ({
   if (!isOpen) return null;
 
   const handleContinue = () => {
-    navigate(`/test/${testId}/attempt/${attemptId}`);
+    navigate(`/attempt/${attemptId}`);
   };
 
   const timeSinceStart = () => {

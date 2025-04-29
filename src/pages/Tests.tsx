@@ -31,7 +31,8 @@ const Tests: React.FC = () => {
     try {
       const res = await studentService.startTest(testId);
       const attemptId = res.data._id;
-      navigate(`/tests/${testId}/attempt/${attemptId}`);
+      console.log("/test-taking/${testId}/${attemptId} -> ", `/test-taking/${testId}/${attemptId}`);
+      navigate(`/test-taking/${testId}/${attemptId}`);
     } catch (err) {
       setError('Failed to start test');
     }
