@@ -28,6 +28,7 @@ const Signup: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (formData.password !== formData.confirmPassword) {
+      console.log("password mismatch");
       // Handle password mismatch
       return;
     }

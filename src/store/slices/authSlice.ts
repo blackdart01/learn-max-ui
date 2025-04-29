@@ -27,7 +27,7 @@ export const login = createAsyncThunk(
 );
 
 export const signup = createAsyncThunk(
-  'auth/signup',
+  'auth/register',
   async ({ username, password, role }: { username: string; password: string; role: 'student' | 'teacher' }) => {
     const response = await authService.signup(username, password, role);
     localStorage.setItem('token', response.data.token);
