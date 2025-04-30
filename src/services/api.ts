@@ -2,7 +2,7 @@ import axios from 'axios';
 import { Question, Test, Attempt, User, TestFormData } from '../types';
 
 // Make sure to use the full URL from the environment variable
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 console.log('API_URL:', API_URL); // Debugging line to check the value
 
