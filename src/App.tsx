@@ -20,6 +20,7 @@ import TestQuestions from './pages/TestQuestions';
 import TestTaking from './pages/TestTaking';
 import ViewResponse from './pages/ViewResponse';
 import AttemptDetails from './pages/AttemptDetails';
+import ManageEnrollments from './pages/ManageEnrollments';
 
 function getTokenExpiration(token: string | null): number | null {
   if (!token) return null;
@@ -181,6 +182,14 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['teacher']}>
                 <ManageTests />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/manage-enrollments"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <ManageEnrollments />
               </ProtectedRoute>
             }
           />

@@ -38,6 +38,9 @@ const Navbar: React.FC = () => {
           <Link to="/questions" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 text-sm font-medium" onClick={() => setMenuOpen(false)}>
             Questions
           </Link>
+          <Link to="/manage-enrollments" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+            Manage Students
+          </Link>
         </>
       )}
     </>

@@ -105,6 +105,12 @@ export const studentService = {
 export const teacherService = {
   getAttemptsByTest: (testId: string) => api.get<Attempt[]>(`/teachers/attempts/${testId}`),
   getAttemptDetails: (attemptId: string) => api.get<Attempt>(`/teachers/attempts/${attemptId}`),
+  // Enrollment management
+  getEnrolledStudents: () => api.get<User[] | { data: User[] }>('/teachers/enrolled-students'),
+  enrollStudents: (usernames: string[]) => 
+    api.post<{ message: string; enrolledStudents: User[] }>('/teachers/enroll-students', { usernames }),
+  removeEnrolledStudents: (studentIds: string[]) => 
+    api.post<{ message: string }>('/teachers/remove-students', { studentIds }),
 };
 
 export default api; 
