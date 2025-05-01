@@ -35,6 +35,9 @@ const Navbar: React.FC = () => {
           <Link to="/manage-tests" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 text-sm font-medium" onClick={() => setMenuOpen(false)}>
             Manage Tests
           </Link>
+          <Link to="/teacher-attempts" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 text-sm font-medium" onClick={() => setMenuOpen(false)}>
+            View Attempts
+          </Link>
           <Link to="/questions" className="text-gray-500 hover:text-gray-900 inline-flex items-center px-1 pt-1 text-sm font-medium" onClick={() => setMenuOpen(false)}>
             Questions
           </Link>

@@ -192,7 +192,7 @@ const Questions: React.FC = () => {
       const activeTests = (response.data || []).filter(test => {
         const start = test.startDate ? new Date(test.startDate) : null;
         const end = test.endDate ? new Date(test.endDate) : null;
-        return (!start || start <= now) && (!end || end >= now);
+        return (!end || end >= now);
       });
       setAllTests(activeTests);
     } catch (err) {

@@ -24,6 +24,20 @@ export const fetchAttemptsByTest = createAsyncThunk(
     return response.data;
   }
 );
+export const getAllAttempts = createAsyncThunk(
+  'teachers/attempts',
+  async () => {
+    const response = await teacherService.getAllAttempts();
+    return response;
+  }
+);
+export const getAllAttemptsByAttemptId = createAsyncThunk(
+  '/teachers/attempts/attempt',
+  async (attemptId: string) => {
+    const response = await teacherService.getAllAttemptsByAttemptId(attemptId);
+    return response;
+  }
+);
 
 export const startTest = createAsyncThunk(
   'attempts/start',

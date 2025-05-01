@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ApiResponse, User, Question, Test, Attempt } from '../../types';
 
-const API_URL = 'http://localhost:5000';
+const API_URL = import.meta.env.VITE_API_URL.slice(0, -4) || 'http://localhost:5000';
 
 // Create axios instance with base URL
 const api = axios.create({

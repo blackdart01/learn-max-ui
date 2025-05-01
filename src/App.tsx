@@ -21,6 +21,8 @@ import TestTaking from './pages/TestTaking';
 import ViewResponse from './pages/ViewResponse';
 import AttemptDetails from './pages/AttemptDetails';
 import ManageEnrollments from './pages/ManageEnrollments';
+import TeacherAttempts from './pages/TeacherAttempts';
+import TeacherAttemptReview from './pages/TeacherAttemptReview';
 
 function getTokenExpiration(token: string | null): number | null {
   if (!token) return null;
@@ -174,6 +176,22 @@ const App: React.FC = () => {
             element={
               <ProtectedRoute allowedRoles={['teacher']}>
                 <Questions />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher-attempts"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherAttempts />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/teacher-attempts/:attemptId"
+            element={
+              <ProtectedRoute allowedRoles={['teacher']}>
+                <TeacherAttemptReview />
               </ProtectedRoute>
             }
           />

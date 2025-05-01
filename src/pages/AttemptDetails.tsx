@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { studentService } from '../services/api';
 import { Attempt, Question } from '../types';
 import Toast from '../components/Toast';
+import { Spin } from 'antd';
 
 interface AttemptQuestion extends Question {
   userAnswer?: string;
@@ -28,42 +29,64 @@ const AttemptDetails: React.FC = () => {
       
       try {
         const res = await studentService.getStudentAttemptById(attemptId);
-        if (!res.data) {
-          setToast({ message: 'Failed to load attempt details', type: 'error' });
-          setTimeout(() => navigate('/my-attempts'), 2000);
-          return;
+        const attemptData = res.data;
+        
+        if (!attemptData || !attemptData.testId) {
+          throw new Error('Invalid attempt data received');
         }
         
-        setAttempt(res.data);
+        setAttempt(attemptData);
         
-        if (res.data.testId && Array.isArray(res.data.testId.questions)) {
+        // Ensure testId and questions exist
+        if (attemptData.testId && Array.isArray(attemptData.testId.questions) && attemptData.testId.questions.length > 0) {
           // Create a map of answers for easier lookup
-          const answersMap = res.data.answers.reduce((acc: {[key: string]: string}, ans: any) => {
-            acc[ans.questionId._id] = ans.selectedOption;
+          const answersMap = (attemptData.answers || []).reduce((acc: {[key: string]: any}, ans: any) => {
+            if (ans && ans.questionId && ans.questionId._id) {
+              acc[ans.questionId._id] = {
+                selectedOption: ans.selectedOption,
+                isCorrect: ans.isCorrect
+              };
+            }
             return acc;
           }, {});
           
           // Map user answers to questions
-          const questionsWithAnswers = res.data.testId.questions.map((q: Question) => {
-            const userAnswer = answersMap[q._id];
+          const questionsWithAnswers = attemptData.testId.questions.map((q: Question) => {
+            const userAnswer = answersMap[q._id]?.selectedOption;
+            const isAttempted = q._id in answersMap;
+            
+            let isCorrect = false;
+            if (isAttempted) {
+              // If teacher has marked it, use that
+              if (answersMap[q._id]?.isCorrect !== undefined) {
+                isCorrect = answersMap[q._id].isCorrect;
+              } else {
+                // Otherwise check against correct answer
+                const correctAnswers = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer];
+                isCorrect = correctAnswers
+                  .map(ans => String(ans).toLowerCase().trim())
+                  .includes(String(userAnswer).toLowerCase().trim());
+              }
+            }
+            
             return {
               ...q,
               userAnswer,
-              isCorrect: (q.correctAnswer as string[])
-                .map(correctAnswer => correctAnswer.toLowerCase())
-                .includes((answersMap[q._id] as string).toLowerCase()),
-                isAttempted: q._id in answersMap
+              isCorrect,
+              isAttempted
             };
           });
           
           setQuestions(questionsWithAnswers);
         } else {
-          setToast({ message: 'No questions found in this attempt', type: 'error' });
-          setTimeout(() => navigate('/my-attempts'), 2000);
+          throw new Error('No questions found in this attempt');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('Error fetching attempt details:', error);
-        setToast({ message: 'Failed to load attempt details', type: 'error' });
+        setToast({ 
+          message: error.message || 'Failed to load attempt details', 
+          type: 'error' 
+        });
         setTimeout(() => navigate('/my-attempts'), 2000);
       } finally {
         setLoading(false);
@@ -76,7 +99,7 @@ const AttemptDetails: React.FC = () => {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg text-gray-600">Loading...</div>
+        <Spin size="large" />
         {toast && <Toast message={toast.message} type={toast.type} isOpen={true} />}
       </div>
     );
@@ -85,7 +108,16 @@ const AttemptDetails: React.FC = () => {
   if (!attempt || !questions.length) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <Toast message="Failed to load attempt details" type="error" isOpen={true} />
+        <div className="text-center">
+          <div className="text-xl text-red-600 mb-4">Failed to load attempt details</div>
+          <button 
+            onClick={() => navigate('/my-attempts')}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Return to My Attempts
+          </button>
+        </div>
+        {toast && <Toast message={toast.message} type={toast.type} isOpen={true} />}
       </div>
     );
   }

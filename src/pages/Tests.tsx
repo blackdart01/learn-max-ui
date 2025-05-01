@@ -38,6 +38,28 @@ const Tests: React.FC = () => {
     }
   };
 
+  const isUpcoming = (test: Test) => {
+    const now = new Date();
+    return test.startDate ? new Date(test.startDate) > now : false;
+  };
+
+  const getTestStatus = (test: Test) => {
+    if (isUpcoming(test)) {
+      return {
+        buttonText: 'Upcoming Test',
+        buttonClass: 'bg-gray-400 cursor-not-allowed',
+        disabled: true,
+        statusText: `Starts on ${test.startDate ? new Date(test.startDate).toLocaleString() : 'Date not set'}`
+      };
+    }
+    return {
+      buttonText: 'Start Test',
+      buttonClass: 'bg-indigo-600 hover:bg-indigo-700',
+      disabled: false,
+      statusText: `Available until ${test.endDate ? new Date(test.endDate).toLocaleString() : 'No end date'}`
+    };
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -66,38 +88,40 @@ const Tests: React.FC = () => {
         ) : (
           <div className="bg-white shadow overflow-hidden sm:rounded-md">
             <ul className="divide-y divide-gray-200">
-              {tests.map((test) => (
-                <li key={test._id}>
-                  <div className="px-4 py-4 sm:px-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h3 className="text-lg font-medium text-gray-900">{test.title}</h3>
-                        <p className="mt-1 text-sm text-gray-500">{test.description}</p>
+              {tests.map((test) => {
+                const status = getTestStatus(test);
+                return (
+                  <li key={test._id}>
+                    <div className="px-4 py-4 sm:px-6">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="text-lg font-medium text-gray-900">{test.title}</h3>
+                          <p className="mt-1 text-sm text-gray-500">{test.description}</p>
+                        </div>
+                        <div className="ml-2 flex-shrink-0">
+                          <button
+                            onClick={() => !status.disabled && handleStartTest(test._id)}
+                            className={`${status.buttonClass} text-white px-4 py-2 rounded-md text-sm font-medium`}
+                            disabled={status.disabled}
+                          >
+                            {status.buttonText}
+                          </button>
+                        </div>
                       </div>
-                      <div className="ml-2 flex-shrink-0">
-                        <button
-                          onClick={() => handleStartTest(test._id)}
-                          className="bg-indigo-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-indigo-700"
-                        >
-                          Start Test
-                        </button>
+                      <div className="mt-2 sm:flex sm:justify-between">
+                        <div className="sm:flex">
+                          <p className="flex items-center text-sm text-gray-500">
+                            Questions: {Array.isArray(test.questions) ? test.questions.length : 0} • Duration: {test.duration} minutes
+                          </p>
+                        </div>
+                        <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
+                          <p>{status.statusText}</p>
+                        </div>
                       </div>
                     </div>
-                    <div className="mt-2 sm:flex sm:justify-between">
-                      <div className="sm:flex">
-                        <p className="flex items-center text-sm text-gray-500">
-                          Questions: {Array.isArray(test.questions) ? test.questions.length : 0} • Duration: {test.duration} minutes
-                        </p>
-                      </div>
-                      <div className="mt-2 flex items-center text-sm text-gray-500 sm:mt-0">
-                        <p>
-                          Available until: {test.endDate ? new Date(test.endDate).toLocaleDateString() : 'No end date'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </li>
-              ))}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         )}
